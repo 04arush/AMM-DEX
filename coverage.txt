@@ -1,0 +1,32 @@
+Compiling 30 files with Solc 0.8.33
+Solc 0.8.33 finished in 2.01s
+Compiler run successful!
+Analysing contracts...
+Running tests...
+
+Ran 10 tests for test/LiquidityPool.t.sol:LiquidityPoolTest
+[PASS] testAddInitialLiquidity() (gas: 246631)
+[PASS] testAddSubsequentLiquidity() (gas: 316075)
+[PASS] testFuzzLPTokensProportional(uint256) (runs: 256, μ: 242527, ~: 242866)
+[PASS] testFuzzSwapNeverDrainsPool(uint256) (runs: 256, μ: 282923, ~: 282923)
+[PASS] testRemoveLiquidity() (gas: 265052)
+[PASS] testSwapRespectsConstantProduct() (gas: 284189)
+[PASS] testSwapRevertOnInvalidToken() (gas: 19186)
+[PASS] testSwapRevertOnSlippage() (gas: 280960)
+[PASS] testSwapTokenAForTokenB() (gas: 284368)
+[PASS] testSwapTokenBForTokenA() (gas: 280495)
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 440.26ms (879.48ms CPU time)
+
+Ran 1 test suite in 443.47ms (440.26ms CPU time): 10 tests passed, 0 failed, 0 skipped (10 total tests)
+
+╭-----------------------+----------------+----------------+----------------+---------------╮
+| File                  | % Lines        | % Statements   | % Branches     | % Funcs       |
++==========================================================================================+
+| src/LiquidityPool.sol | 86.84% (66/76) | 88.64% (78/88) | 51.16% (22/43) | 77.78% (7/9)  |
+|-----------------------+----------------+----------------+----------------+---------------|
+| src/TokenA.sol        | 100.00% (2/2)  | 100.00% (1/1)  | 100.00% (0/0)  | 100.00% (1/1) |
+|-----------------------+----------------+----------------+----------------+---------------|
+| src/TokenB.sol        | 100.00% (2/2)  | 100.00% (1/1)  | 100.00% (0/0)  | 100.00% (1/1) |
+|-----------------------+----------------+----------------+----------------+---------------|
+| Total                 | 87.50% (70/80) | 88.89% (80/90) | 51.16% (22/43) | 81.82% (9/11) |
+╰-----------------------+----------------+----------------+----------------+---------------╯
