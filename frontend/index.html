@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AMM DEX</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+  <style>
+    * { 
+        box-sizing: border-box; 
+        margin: 0; 
+        padding: 0;
+    }
+    body { 
+        background: #0f0f13; 
+        color: #e2e8f0; 
+        font-family: monospace; 
+        display: flex; 
+        justify-content: center; 
+        padding: 40px 16px;
+    }
+    .app { 
+        max-width: 420px; 
+        width: 100%;
+    }
+    h1 { 
+        font-size: 1.4rem; 
+        color: #a78bfa; 
+        margin-bottom: 24px; 
+        text-align: center;
+    }
+    .card { 
+        background: #1a1a2e; 
+        border: 1px solid #2d2d44; 
+        border-radius: 12px; 
+        padding: 20px; 
+        margin-bottom: 16px;
+    }
+    label { 
+        font-size: 0.75rem; 
+        color: #94a3b8; 
+        display: block; 
+        margin-bottom: 6px;
+    }
+    input, select { 
+        width: 100%; 
+        background: #0f0f1a; 
+        border: 1px solid #2d2d44; 
+        border-radius: 8px; 
+        color: #e2e8f0; 
+        padding: 10px 12px; 
+        font-family: monospace; 
+        font-size: 0.95rem; 
+        margin-bottom: 12px;
+    }
+    button { 
+        width: 100%; 
+        background: #7c3aed; 
+        color: white; 
+        border: none; 
+        border-radius: 8px; 
+        padding: 12px; 
+        font-size: 1rem; 
+        font-family: monospace; 
+        cursor: pointer; 
+        transition: background 0.2s;
+    }
+    button:hover { 
+        background: #6d28d9;
+    }
+    button:disabled { 
+        background: #374151; 
+        cursor: not-allowed;
+    }
+    .info { 
+        font-size: 0.78rem; 
+        color: #64748b; 
+        margin-top: 10px;
+    }
+    #status { 
+        margin-top: 12px; 
+        font-size: 0.8rem; 
+        color: #34d399; 
+        min-height: 1.2em; 
+        word-break: break-all;
+    }
+    #wallet { 
+        text-align: right; 
+        font-size: 0.75rem; 
+        color: #a78bfa; 
+        margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <h1>⚡ AMM DEX — Sepolia</h1>
+  <div id="wallet">Not connected</div>
+
+  <!-- SWAP -->
+  <div class="card">
+    <label>Swap</label>
+    <select id="tokenIn">
+      <option value="A">TokenA → TokenB</option>
+      <option value="B">TokenB → TokenA</option>
+    </select>
+    <label>Amount In</label>
+    <input id="amountIn" type="number" placeholder="e.g. 100" />
+    <button id="btnSwap" onclick="swap()">Swap</button>
+    <div id="status"></div>
+    <div class="info" id="price"></div>
+  </div>
+
+  <!-- ADD LIQUIDITY -->
+  <div class="card">
+    <label>Add Liquidity</label>
+    <input id="addA" type="number" placeholder="TokenA amount" />
+    <input id="addB" type="number" placeholder="TokenB amount" />
+    <button onclick="addLiquidity()">Add Liquidity</button>
+    <div id="lpStatus"></div>
+  </div>
+
+  <button onclick="connectWallet()" style="background:#1e1e30; border:1px solid #2d2d44;">Connect Wallet</button>
+</div>
+
+<script>
+const POOL_ADDR  = "0x46885e57905d7A031B3eb1943442B365bD98a49d";
+const TOKEN_A    = "0xDD8625Ab6Afa9188eAE2eda2F0E87BAdd1c3df59";
+const TOKEN_B    = "0xDe40b09BC26E4aCD6e439D84e5935cC0e25492Fe";
+
+const POOL_ABI = [
+  "function swapExactInput(address tokenIn, uint256 amountIn, uint256 amountOutMin) returns (uint256)",
+  "function addLiquidity(uint256 amountADesired, uint256 amountBDesired, uint256 amountAMin, uint256 amountBMin) returns (uint256,uint256,uint256)",
+  "function getPrice() view returns (uint256,uint256)",
+  "function getReserves() view returns (uint256,uint256)",
+];
+const ERC20_ABI = [
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function balanceOf(address) view returns (uint256)",
+];
+
+let provider, signer, pool, tkA, tkB;
+
+async function connectWallet() {
+  if (!window.ethereum) {
+    alert("MetaMask not detected. Make sure you're on http://localhost and MetaMask is installed.");
+    return;
+  }
+  provider = new ethers.BrowserProvider(window.ethereum);
+  await provider.send("eth_requestAccounts", []);
+  signer = await provider.getSigner();
+  const addr = await signer.getAddress();
+  document.getElementById("wallet").textContent = addr.slice(0,6) + "..." + addr.slice(-4);
+  pool = new ethers.Contract(POOL_ADDR, POOL_ABI, signer);
+  tkA  = new ethers.Contract(TOKEN_A, ERC20_ABI, signer);
+  tkB  = new ethers.Contract(TOKEN_B, ERC20_ABI, signer);
+  updatePrice();
+}
+
+async function updatePrice() {
+  try {
+    const [pAB, pBA] = await pool.getPrice();
+    document.getElementById("price").textContent =
+      `1 TKA = ${ethers.formatEther(pAB)} TKB  |  1 TKB = ${ethers.formatEther(pBA)} TKA`;
+  } catch {}
+}
+
+async function swap() {
+  const status = document.getElementById("status");
+  if (!signer) { status.textContent = "Connect wallet first"; return; }
+  const dir = document.getElementById("tokenIn").value;
+  const amt = document.getElementById("amountIn").value;
+  if (!amt) return;
+  const amtWei = ethers.parseEther(amt);
+  const tokenIn = dir === "A" ? TOKEN_A : TOKEN_B;
+  const token   = dir === "A" ? tkA : tkB;
+  try {
+    status.textContent = "Approving...";
+    const tx1 = await token.approve(POOL_ADDR, amtWei);
+    await tx1.wait();
+    status.textContent = "Swapping...";
+    const tx2 = await pool.swapExactInput(tokenIn, amtWei, 0);
+    await tx2.wait();
+    status.textContent = `✓ Swapped! tx: ${tx2.hash}`;
+    updatePrice();
+  } catch(e) {
+    status.textContent = "Error: " + (e.reason || e.message);
+  }
+}
+
+async function addLiquidity() {
+  const status = document.getElementById("lpStatus");
+  if (!signer) { status.textContent = "Connect wallet first"; return; }
+  const amtA = ethers.parseEther(document.getElementById("addA").value || "0");
+  const amtB = ethers.parseEther(document.getElementById("addB").value || "0");
+  try {
+    status.textContent = "Approving tokens...";
+    await (await tkA.approve(POOL_ADDR, amtA)).wait();
+    await (await tkB.approve(POOL_ADDR, amtB)).wait();
+    status.textContent = "Adding liquidity...";
+    const tx = await pool.addLiquidity(amtA, amtB, 0, 0);
+    await tx.wait();
+    status.textContent = `✓ LP added! tx: ${tx.hash}`;
+    updatePrice();
+  } catch(e) {
+    status.textContent = "Error: " + (e.reason || e.message);
+  }
+}
+</script>
+</body>
+</html>
